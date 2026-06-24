@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <title>Daniel Wang</title>
+  <style>
+    :root {
+      --fg: #ffffff;
+      --muted: rgba(255, 255, 255, 0.55);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body {
+      width: 100%;
+      overflow-x: hidden;
+      background: #000000;
+      font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      color: var(--fg);
+    }
+
+    /* The 3D graph is a fixed background that stays put while content scrolls */
+    #graph {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+    }
+
+    /* Header */
+    header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 10;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      padding: 28px 40px 48px;
+      pointer-events: none;
+      /* fade content out beneath the persistent top bar */
+      background: linear-gradient(to bottom, rgba(0,0,0,0.92) 40%, rgba(0,0,0,0));
+    }
+
+    header .brand {
+      font-size: 15px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      font-weight: 600;
+      opacity: 0.85;
+      pointer-events: auto;
+    }
+
+    nav {
+      display: flex;
+      gap: 36px;
+      pointer-events: auto;
+    }
+
+    nav a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 14px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      transition: color 0.25s ease, opacity 0.25s ease;
+      position: relative;
+    }
+
+    nav a::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      bottom: -6px;
+      width: 0;
+      height: 1px;
+      background: var(--fg);
+      transition: width 0.3s ease;
+    }
+
+    nav a:hover {
+      color: var(--fg);
+    }
+
+    nav a:hover::after {
+      width: 100%;
+    }
+
+    /* Footer: email + LinkedIn */
+    footer {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 10;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      padding: 48px 40px 22px;
+      pointer-events: none;
+      /* fade content out beneath the persistent bottom bar */
+      background: linear-gradient(to top, rgba(0,0,0,0.92) 35%, rgba(0,0,0,0));
+    }
+
+    footer a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 13px;
+      letter-spacing: 0.08em;
+      pointer-events: auto;
+      transition: color 0.25s ease;
+      position: relative;
+    }
+
+    footer a:not(.email) {
+      text-transform: uppercase;
+    }
+
+    footer a::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      bottom: -6px;
+      width: 0;
+      height: 1px;
+      background: var(--fg);
+      transition: width 0.3s ease;
+    }
+
+    footer a:hover {
+      color: var(--fg);
+    }
+
+    footer a:hover::after {
+      width: 100%;
+    }
+
+    /* Hero fills the first screen; the name is centered over the network. */
+    .hero {
+      position: relative;
+      z-index: 5;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      pointer-events: none;   /* let drags reach the canvas to rotate it */
+      user-select: none;
+    }
+
+    /* Scroll cue at the bottom of the hero */
+    .scroll-cue {
+      position: absolute;
+      bottom: 80px;
+      font-size: 11px;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: var(--muted);
+      animation: bob 2.2s ease-in-out infinite;
+    }
+    @keyframes bob { 0%,100% { transform: translateY(0); opacity: 0.5; } 50% { transform: translateY(6px); opacity: 0.9; } }
+
+    /* About section — scrolls up over the network background */
+    .about {
+      position: relative;
+      z-index: 5;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      padding: 160px max(8vw, 32px);
+      background: linear-gradient(180deg,
+        rgba(0,0,0,0) 0%, rgba(0,0,0,0.72) 14%, rgba(0,0,0,0.72) 86%, rgba(0,0,0,0) 100%);
+    }
+
+    .about-inner {
+      max-width: 1000px;
+      margin: 0 auto;
+      display: flex;
+      gap: 56px;
+      align-items: center;
+    }
+
+    /* Portrait — grayscale by default, gains color on hover */
+    .about-photo {
+      flex: 0 0 300px;
+      margin: 0;
+    }
+    .about-photo img {
+      width: 100%;
+      display: block;
+      border-radius: 14px;
+      filter: grayscale(1) contrast(1.03);
+      box-shadow: 0 0 50px rgba(255, 255, 255, 0.07);
+      transition: filter 0.55s ease, transform 0.55s ease;
+    }
+    .about-photo img:hover {
+      filter: grayscale(0);
+      transform: scale(1.02);
+    }
+
+    .about-text { flex: 1; }
+
+    .about p {
+      font-size: clamp(17px, 1.9vw, 23px);
+      line-height: 1.65;
+      font-weight: 300;
+      color: var(--fg);
+      margin-bottom: 1.4em;
+    }
+    .about p:last-child { margin-bottom: 0; }
+
+    .about-text a {
+      color: var(--fg);
+      text-decoration: none;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.4);
+      transition: border-color 0.25s ease;
+    }
+    .about-text a:hover { border-bottom-color: var(--fg); }
+
+    /* Projects / Publications */
+    .projects {
+      position: relative;
+      z-index: 5;
+      padding: 140px max(8vw, 32px);
+      background: linear-gradient(180deg,
+        rgba(0,0,0,0) 0%, rgba(0,0,0,0.78) 12%, rgba(0,0,0,0.78) 88%, rgba(0,0,0,0) 100%);
+    }
+    .projects-inner { max-width: 760px; margin: 0 auto; }
+
+    .projects h2 {
+      font-size: clamp(28px, 4.5vw, 46px);
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      margin-bottom: 40px;
+    }
+    .projects h2.pub-heading { margin-top: 90px; }
+
+    .proj-list { list-style: none; }
+    .proj-list li {
+      padding-bottom: 30px;
+      margin-bottom: 30px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .proj-list li:last-child { border-bottom: none; }
+
+    .proj-list h3 {
+      font-size: clamp(19px, 2.3vw, 27px);
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+    .proj-list p {
+      font-size: clamp(15px, 1.7vw, 20px);
+      line-height: 1.55;
+      font-weight: 300;
+      color: rgba(255, 255, 255, 0.78);
+    }
+
+    .projects a {
+      color: var(--fg);
+      text-decoration: none;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.4);
+      transition: border-color 0.25s ease;
+    }
+    .projects a:hover { border-bottom-color: var(--fg); }
+
+    .proj-cta { margin-top: 38px; font-size: clamp(15px, 1.7vw, 20px); }
+    .proj-cta a { border-bottom: none; color: var(--muted); }
+    .proj-cta a:hover { color: var(--fg); }
+    .proj-more { margin-top: 26px; color: var(--muted); font-style: italic; }
+
+    .hero h1 {
+      font-size: clamp(48px, 9vw, 110px);
+      font-weight: 700;
+      letter-spacing: 0.01em;
+      line-height: 1;
+      text-transform: uppercase;
+      text-shadow: 0 0 40px rgba(255, 255, 255, 0.25);
+    }
+
+    .hero p {
+      margin-top: 18px;
+      font-size: clamp(14px, 2vw, 20px);
+      font-weight: 300;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    /* Subtle vignette so the center text reads cleanly over the graph */
+    .vignette {
+      position: fixed;
+      inset: 0;
+      z-index: 2;
+      pointer-events: none;
+      background: radial-gradient(circle at center,
+        rgba(0, 0, 0, 0.55) 0%,
+        rgba(0, 0, 0, 0.15) 35%,
+        rgba(0, 0, 0, 0) 65%);
+    }
+
+    @media (max-width: 820px) {
+      .about-inner { flex-direction: column; align-items: flex-start; gap: 34px; }
+      .about-photo { flex: 0 0 auto; width: 220px; }
+    }
+
+    @media (max-width: 600px) {
+      header { padding: 20px; }
+      nav { gap: 20px; }
+      nav a { font-size: 12px; }
+      footer { padding: 16px 20px; flex-direction: column; gap: 8px; }
+      footer a { font-size: 12px; }
+    }
+  </style>
+</head>
+<body>
+  <div id="graph"></div>
+  <div class="vignette"></div>
+
+  <header>
+    <div class="brand">DYW</div>
+    <nav>
+      <a href="#about">About</a>
+      <a href="#projects">Projects</a>
+      <a href="https://github.com/danielyuhanwang" target="_blank" rel="noopener">GitHub</a>
+    </nav>
+  </header>
+
+  <section class="hero">
+    <h1 id="name">Daniel Wang</h1>
+    <p>Statistics @ Yale</p>
+    <div class="scroll-cue">Scroll ↓</div>
+  </section>
+
+  <section class="about" id="about">
+    <div class="about-inner">
+      <figure class="about-photo">
+        <img src="me.png" alt="Daniel Wang" />
+      </figure>
+      <div class="about-text">
+        <p>Nice to meet you! I’m Daniel, an undergrad at Yale. I build statistical models to understand complex systems.</p>
+        <p>I’m building Infodemica, a video generation tool for medical journals backed by Yale’s Tsai City Launch Pad Startup Accelerator and Sustainable Health Initiative. I’ve also worked @ <a href="https://www.decisiondeskhq.com/" target="_blank" rel="noopener">DDHQ</a>, @ <a href="https://humannaturelab.net/yins" target="_blank" rel="noopener">Yale Institute of Network Sciences</a>, @ <a href="https://youthpoll.yale.edu/" target="_blank" rel="noopener">Yale Youth Poll</a>, and @ Cornerstone Research.</p>
+        <p>I have a soft spot for gaussian processes, and my creative inspirations include Marcel Proust and Clarice Lispector.</p>
+        <p>My side quests include finding the best London fog in the country, trying to survive a V1 rock climb, and learning how to draw.</p>
+        <p>I am also a pianist.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="projects" id="projects">
+    <div class="projects-inner">
+      <h2>Projects</h2>
+      <ul class="proj-list">
+        <li>
+          <h3>Alnilam</h3>
+          <p>A research agent that gathers articles, journal papers, and social media posts, explains key insights, and synthesizes reading into a digital commonplace book.</p>
+        </li>
+        <li>
+          <h3>Infodemica</h3>
+          <p>A text-to-video web app that transforms medical research papers into two-minute, digestible videos for non-scientific audiences.</p>
+        </li>
+        <li>
+          <h3>Dialect Classifier</h3>
+          <p>An evaluation of fine-tuned language models for English dialect identification.</p>
+        </li>
+        <li>
+          <h3>Proust NLP Project</h3>
+          <p>A statistical and computational analysis of C. K. Scott Moncrieff’s translation of <em>In Search of Lost Time</em>.</p>
+        </li>
+      </ul>
+      <p class="proj-cta">
+        <a href="https://github.com/danielyuhanwang" target="_blank" rel="noopener">View my work on GitHub →</a>
+      </p>
+
+      <h2 class="pub-heading">Publications</h2>
+      <ul class="proj-list">
+        <li>
+          <h3>A Decision-Analytic Markov Model Comparing Iron Deficiency Treatments</h3>
+          <p>
+            <a href="https://ashpublications.org/bloodadvances/article/10/5/1508/565895/Cost-effectiveness-of-first-line-IV-vs-oral-iron" target="_blank" rel="noopener">Cost-effectiveness of first-line IV vs. oral iron</a>
+          </p>
+        </li>
+      </ul>
+      <p class="proj-more">… more coming soon</p>
+    </div>
+  </section>
+
+  <footer>
+    <a class="email" href="mailto:daniel.wang.dyw8@yale.edu">daniel.wang.dyw8@yale.edu</a>
+    <a href="https://www.linkedin.com/in/daniel-wang-33ab1522a/" target="_blank" rel="noopener">LinkedIn</a>
+  </footer>
+
+  <!-- Single Three.js instance via import map. Building the network directly
+       in Three.js (instead of a graph library that bundles its own three)
+       keeps everything on ONE three instance, so bloom post-processing works. -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+    import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+    import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+    import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+    const elem = document.getElementById('graph');
+
+    // ---------- 1. Generate a clustered "social network" ----------
+    // Communities are placed as loose clusters on a sphere; nodes scatter
+    // around their community center, giving a believable social topology.
+    function buildNetwork({ communities = 11, minSize = 8, maxSize = 18,
+                            spread = 520, clusterRadius = 90 } = {}) {
+      const nodes = [];
+      const edges = [];
+      const seen = new Set();
+      const communityNodeIdx = [];
+
+      function addEdge(a, b) {
+        if (a === b) return;
+        const key = a < b ? a + '-' + b : b + '-' + a;
+        if (seen.has(key)) return;
+        seen.add(key);
+        edges.push([a, b]);
+      }
+
+      for (let c = 0; c < communities; c++) {
+        // Community center: random point inside a sphere of radius `spread`.
+        const dir = new THREE.Vector3(
+          Math.random() * 2 - 1, Math.random() * 2 - 1, Math.random() * 2 - 1
+        ).normalize();
+        const center = dir.multiplyScalar(spread * Math.cbrt(Math.random()));
+
+        const size = Math.floor(Math.random() * (maxSize - minSize + 1)) + minSize;
+        const idx = [];
+        for (let i = 0; i < size; i++) {
+          const offset = new THREE.Vector3(
+            (Math.random() * 2 - 1), (Math.random() * 2 - 1), (Math.random() * 2 - 1)
+          ).multiplyScalar(clusterRadius);
+          const pos = center.clone().add(offset);
+          idx.push(nodes.length);
+          nodes.push({ pos, size: 6.5 + Math.random() * 6 });  // bigger so colors pop
+        }
+        communityNodeIdx.push(idx);
+
+        // Clean tree within the community (one parent per node) ...
+        for (let i = 1; i < idx.length; i++) {
+          addEdge(idx[i], idx[Math.floor(Math.random() * i)]);
+        }
+        // ... plus a few extra intra-cluster links for structure.
+        const extra = Math.floor(idx.length * 0.18);
+        for (let e = 0; e < extra; e++) {
+          addEdge(idx[(Math.random() * idx.length) | 0], idx[(Math.random() * idx.length) | 0]);
+        }
+      }
+
+      // Sparse inter-community "bridges".
+      for (let c = 0; c < communities; c++) {
+        const other = (Math.random() * communities) | 0;
+        if (other === c) continue;
+        const a = communityNodeIdx[c][(Math.random() * communityNodeIdx[c].length) | 0];
+        const b = communityNodeIdx[other][(Math.random() * communityNodeIdx[other].length) | 0];
+        addEdge(a, b);
+      }
+
+      return { nodes, edges };
+    }
+
+    const { nodes, edges } = buildNetwork();
+
+    // ---------- 2. Scene / camera / renderer ----------
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x000000);
+
+    const camera = new THREE.PerspectiveCamera(50, 1, 1, 8000);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    elem.appendChild(renderer.domElement);
+
+    // Drag to orbit (desktop). Zoom is OFF so the mouse wheel scrolls the page
+    // to the About section; touch gestures are off so swiping scrolls on mobile.
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.08;
+    controls.enablePan = false;
+    controls.enableZoom = false;
+    controls.touches = { ONE: null, TWO: null };
+    controls.target.set(0, 0, 0);
+
+    // Group holds the whole network so we can slowly rotate it as a unit.
+    const group = new THREE.Group();
+    scene.add(group);
+
+    // ---------- 3. Nodes: glowing spheres (instanced for performance) ----------
+    // Material color is white; the real per-node color comes from instanceColor,
+    // which we animate via a mathematical permutation (see section 8).
+    const nodeGeo = new THREE.SphereGeometry(1, 16, 16);
+    const nodeMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const nodeMesh = new THREE.InstancedMesh(nodeGeo, nodeMat, nodes.length);
+    const dummy = new THREE.Object3D();
+    nodes.forEach((n, i) => {
+      dummy.position.copy(n.pos);
+      dummy.scale.setScalar(n.size);
+      dummy.updateMatrix();
+      nodeMesh.setMatrixAt(i, dummy.matrix);
+    });
+    nodeMesh.instanceMatrix.needsUpdate = true;
+    group.add(nodeMesh);
+
+    // ---------- 3b. Permutation-driven node colors ----------
+    // Pick a prime P > node count. Repeatedly mapping each node's "slot" value
+    // v -> (v * A) mod P is a bijection (a permutation of residues mod a prime),
+    // so every step reshuffles the color assignment deterministically yet
+    // unpredictably. Each node's hue = slot/P + a continuously advancing global
+    // phase, so colors are always visibly cycling through the wheel while the
+    // permutation periodically reshuffles their relative offsets.
+    function nextPrime(n) {
+      const isPrime = x => { if (x < 2) return false; for (let d = 2; d * d <= x; d++) if (x % d === 0) return false; return true; };
+      let p = n + 1; while (!isPrime(p)) p++; return p;
+    }
+    const P = nextPrime(nodes.length + 1);
+    const A = 7 % P === 0 ? 3 : 7;        // multiplier coprime to the prime P
+    const slot = nodes.map((_, i) => (i + 1) % P);  // current permutation state
+    const curColor = nodes.map(() => new THREE.Color());
+    const tmpColor = new THREE.Color();
+
+    function applyPermutation() {
+      for (let i = 0; i < nodes.length; i++) {
+        slot[i] = (slot[i] * A) % P;        // v -> v*A mod P  (the permutation)
+      }
+    }
+    // Initialize displayed colors so frame one already looks right.
+    for (let i = 0; i < nodes.length; i++) {
+      curColor[i].setHSL(slot[i] / P, 0.9, 0.55);
+      nodeMesh.setColorAt(i, curColor[i]);
+    }
+    nodeMesh.instanceColor.needsUpdate = true;
+
+    // ---------- 4. Links: thick white tubes (core Three.js only) ----------
+    // Each edge is a thin cylinder. Using core THREE (no add-on imports) keeps
+    // this working in every preview environment, and gives genuinely thick,
+    // glowing white connections that LineBasicMaterial (1px max) can't.
+    const LINK_RADIUS = 3.6;                 // tube thickness in world units
+    const linkGeo = new THREE.CylinderGeometry(1, 1, 1, 6);
+    const linkMat = new THREE.MeshBasicMaterial({
+      color: 0xcfcfcf, transparent: true, opacity: 0.32, depthWrite: false
+    });
+    const linkMesh = new THREE.InstancedMesh(linkGeo, linkMat, edges.length);
+    {
+      const up = new THREE.Vector3(0, 1, 0);
+      const dir = new THREE.Vector3();
+      const mid = new THREE.Vector3();
+      const quat = new THREE.Quaternion();
+      const scl = new THREE.Vector3();
+      const mat = new THREE.Matrix4();
+      edges.forEach(([a, b], i) => {
+        const pa = nodes[a].pos, pb = nodes[b].pos;
+        dir.subVectors(pb, pa);
+        const len = dir.length();
+        mid.addVectors(pa, pb).multiplyScalar(0.5);
+        quat.setFromUnitVectors(up, dir.normalize());
+        scl.set(LINK_RADIUS, len, LINK_RADIUS);
+        mat.compose(mid, quat, scl);
+        linkMesh.setMatrixAt(i, mat);
+      });
+      linkMesh.instanceMatrix.needsUpdate = true;
+    }
+    group.add(linkMesh);
+
+    // ---------- 5. Bloom post-processing (the warm glow) ----------
+    const composer = new EffectComposer(renderer);
+    composer.addPass(new RenderPass(scene, camera));
+    const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1),
+      0.55,  // strength — softer/dimmer glow
+      0.45,  // radius
+      0.1    // threshold — only the brighter pixels bloom
+    );
+    composer.addPass(bloom);
+    composer.addPass(new OutputPass());
+
+    // ---------- 6. Frame the camera to fit the whole network ----------
+    // Bounding-sphere radius from the origin (layout is roughly centered there).
+    let boundR = 0;
+    nodes.forEach(n => { boundR = Math.max(boundR, n.pos.length() + n.size); });
+
+    function fitDistance() {
+      const vFov = (camera.fov * Math.PI) / 180;
+      const distV = boundR / Math.sin(vFov / 2);
+      const hFovHalf = Math.atan(Math.tan(vFov / 2) * camera.aspect);
+      const distH = boundR / Math.sin(hFovHalf);
+      return Math.max(distV, distH) * 1.12;
+    }
+
+    // ---------- 7. Responsive sizing ----------
+    // Only update sizes/aspect on resize — never reposition the camera, so the
+    // user's zoom/orbit is preserved.
+    function resize() {
+      const w = elem.clientWidth || window.innerWidth;
+      const h = elem.clientHeight || window.innerHeight;
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      renderer.setSize(w, h);
+      composer.setSize(w, h);
+      bloom.setSize(w, h);
+    }
+    new ResizeObserver(resize).observe(elem);
+    resize();
+
+    // Initial framing.
+    const startDist = fitDistance();
+    camera.position.set(0, 0, startDist);
+    controls.update();
+
+    // Scrolling toward the About section shrinks the network so it recedes
+    // gently into the background.
+    window.addEventListener('scroll', () => {
+      const p = Math.min(window.scrollY / window.innerHeight, 1);
+      group.scale.setScalar(1 - p * 0.45);
+    }, { passive: true });
+
+    // ---------- 8. Gentle sway + permuting node colors ----------
+    let t = 0;
+    let phase = 0;                 // slow global drift so colors never sit still
+    let lastPermute = performance.now();
+    const PERMUTE_MS = 1000;       // reshuffle the permutation every 1s (visible)
+
+    function animate() {
+      requestAnimationFrame(animate);
+      t += 0.0016;
+      group.rotation.y = t;
+      group.rotation.x = Math.sin(t * 0.4) * 0.18;
+
+      phase += 0.0004;             // subtle continuous drift
+
+      // Every second, reshuffle which color slot each node holds. Because the
+      // multiplier jumps each slot far around the wheel, this is a clearly
+      // visible recolor — the "shuffle".
+      const now = performance.now();
+      if (now - lastPermute > PERMUTE_MS) {
+        lastPermute = now;
+        applyPermutation();
+      }
+
+      // Ease each node toward its slot's hue; the lerp makes the shuffle a quick
+      // crossfade (~0.3s) rather than an instant snap.
+      for (let i = 0; i < nodes.length; i++) {
+        const hue = (slot[i] / P + phase) % 1;
+        tmpColor.setHSL(hue, 0.95, 0.46);   // slightly less bright
+        curColor[i].lerp(tmpColor, 0.18);
+        nodeMesh.setColorAt(i, curColor[i]);
+      }
+      nodeMesh.instanceColor.needsUpdate = true;
+
+      controls.update();   // required for damping + zoom
+      composer.render();
+    }
+    animate();
+  </script>
+
+  <!-- Slow, eased smooth-scroll for the About / Projects nav links -->
+  <script>
+    (function () {
+      const easeInOutCubic = t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+      function smoothScrollTo(targetY, duration) {
+        const startY = window.scrollY;
+        const dist = targetY - startY;
+        let startTime = null;
+        function step(ts) {
+          if (startTime === null) startTime = ts;
+          const t = Math.min((ts - startTime) / duration, 1);
+          window.scrollTo(0, startY + dist * easeInOutCubic(t));
+          if (t < 1) requestAnimationFrame(step);
+        }
+        requestAnimationFrame(step);
+      }
+      document.querySelectorAll('nav a[href^="#"]').forEach(a => {
+        a.addEventListener('click', e => {
+          const target = document.getElementById(a.getAttribute('href').slice(1));
+          if (!target) return;
+          e.preventDefault();
+          const y = target.getBoundingClientRect().top + window.scrollY;
+          smoothScrollTo(y, 1600);   // slower, deliberate glide
+        });
+      });
+    })();
+  </script>
+</body>
+</html>
